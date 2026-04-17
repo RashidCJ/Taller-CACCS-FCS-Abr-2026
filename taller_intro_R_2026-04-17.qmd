@@ -61,24 +61,6 @@ Los casos sustantivos (Chile 1988, comparación Cervantes/Galdós) y la adaptaci
 - **Coordinación**: CACCS — `caccs.rp@upr.edu` · Ext. 87751
 :::
 
-## Agenda (120 minutos) {.unnumbered}
-
-| Bloque | Min   | Tema                                                              |
-|--------|-------|-------------------------------------------------------------------|
-| 0      | 0–5   | Bienvenida y por qué R en CSyH                                    |
-| 1      | 5–20  | RStudio + R como calculadora                                      |
-| 2      | 20–40 | Importar y explorar datos (encuesta Chile 1988)                   |
-| 3      | 40–60 | Tidyverse — cinco verbos                                          |
-| 4      | 60–80 | Visualización con `ggplot2`                                       |
-| 5      | 80–95 | Modelo lineal: ¿quién apoyaba el régimen?                         |
-| 6      | 95–115 | Comparación de dos corpus: Cervantes vs. Galdós                  |
-| 7      | 115–120 | Recursos y cierre                                               |
-
-::: {.callout-warning appearance="simple"}
-## Plan B si el tiempo se acorta
-Los bloques **6** (comparación de corpus) y **5** (modelo lineal) son los más comprimibles. Si los bloques 1–4 toman más de lo previsto, el bloque 6 puede reducirse a una demo de 8 minutos centrada solo en la tabla de palabras distintivas.
-:::
-
 ## Cómo usar este documento {.unnumbered}
 
 Hay dos tipos de recuadros con orientación según experiencia previa:
@@ -169,7 +151,7 @@ es_caso_estudio
 
 ::: {.callout-important appearance="simple"}
 ## Tildes y eñes en nombres de objetos (UTF-8)
-R acepta `año_referéndum`, `educación`, `niño` o cualquier nombre con tilde o `ñ` siempre que el archivo y el editor estén en **UTF-8**. En RStudio: **Tools → Global Options → Code → Saving → Default text encoding: UTF-8**. Una vez fijado, todo *script* nuevo se guarda en UTF-8 y los nombres en español funcionan sin sorpresas. Si abren un *script* viejo y ven símbolos raros (`â€`, `Ã±`), reabran con **File → Reopen with Encoding → UTF-8**.
+R acepta `año_referéndum`, `educación`, `niño` o cualquier nombre con tilde o `ñ` siempre que el archivo y el editor estén en **UTF-8**. En RStudio: **Tools → Global Options → Code → Saving → Default text encoding: UTF-8**. Una vez fijado, todo *script* nuevo se guarda en UTF-8 y los nombres en español funcionan sin sorpresas. Si abrieran un *script* viejo y vieran símbolos raros (`â€`, `Ã±`), reábranlo con **File → Reopen with Encoding → UTF-8**.
 :::
 
 ::: {.callout-warning appearance="simple"}
@@ -222,13 +204,28 @@ El **5 de octubre de 1988** los chilenos votaron en un plebiscito para decidir s
 ```{r}
 #| label: chile-cargar
 data(Chile)
-chile <- as_tibble(Chile)   # convertir a tibble para impresión más amigable
+
+# Pasar a tibble y reordenar `education` al orden lógico (P → S → PS)
+# en vez del orden alfabético por defecto (P → PS → S). Esto se propaga
+# a todas las gráficas y modelos que usen la variable.
+chile <- as_tibble(Chile) |>
+  mutate(education = factor(education, levels = c("P", "S", "PS")))
+
 chile
 ```
 
+*En la consola (o con el cursor sobre el nombre del dataset), ejecuten `?Chile` para abrir la documentación — autor, variables, citas.*
+
 ## Importar el mismo conjunto desde un CSV
 
-Para que vean cómo se cargan datos externos, el mismo dataset está exportado a `datos/chile.csv`. Funciona igual desde un archivo local o una URL pública.
+Para que vean cómo se cargan datos externos, el mismo dataset está exportado a `datos/chile.csv`. Funciona igual desde un archivo local o una URL pública. Si por alguna razón el archivo no existiera, lo regeneraríamos desde el paquete:
+
+```{r}
+#| label: exportar-csv
+#| eval: false
+# Ejemplo de exportación (no se corre automáticamente)
+write_csv(Chile, "datos/chile.csv")
+```
 
 ```{r}
 #| label: importar-csv
@@ -257,7 +254,7 @@ head(chile, 5)        # primeras 5 filas
 - `statusquo` — escala continua de apoyo al status quo (régimen militar). Estandarizada (media 0).
 - `vote` — Y (Sí, apoyo a Pinochet), N (No), U (indeciso), A (abstención).
 
-## Otros formatos
+## Otros formatos de importación
 
 ```{r}
 #| label: otros-formatos
@@ -273,6 +270,42 @@ datos_xlsx  <- read_excel("archivo.xlsx")
 ::: {.callout-tip appearance="simple"}
 ## Si han usado SPSS o Stata
 `read_sav()` carga un `.sav` y devuelve un marco de datos sin necesidad de SPSS instalado. Las etiquetas de variables y valores se preservan en atributos que pueden inspeccionar con `attributes()` o convertir con `haven::as_factor()`.
+:::
+
+## Guardar y exportar datos
+
+A cada función `read_*` le corresponde una `write_*` simétrica. La regla práctica: **CSV** para intercambio universal, **`.rds`** para preservar objetos R con todos sus atributos, **`.sav` / `.dta`** para colaborar con quienes usen SPSS o Stata, **`.xlsx`** para audiencias administrativas.
+
+```{r}
+#| label: exportar-formatos
+#| eval: false
+# CSV (universal, legible en cualquier programa)
+write_csv(chile, "datos/chile_export.csv")
+
+# RDS (formato nativo de R — preserva tipos, factores, atributos)
+# Útil para guardar resultados intermedios y recuperarlos con readRDS()
+saveRDS(chile, "datos/chile.rds")
+chile_recuperado <- readRDS("datos/chile.rds")
+
+# SPSS y Stata (preservan etiquetas de variables y valores)
+library(haven)
+write_sav(chile, "datos/chile.sav")
+write_dta(chile, "datos/chile.dta")
+
+# Excel
+library(writexl)
+write_xlsx(chile, "datos/chile.xlsx")
+
+# Guardar un gráfico de ggplot2
+library(ggplot2)
+mi_grafico <- ggplot(chile, aes(x = age, y = statusquo)) + geom_point()
+ggsave("figuras/dispersion_chile.png", mi_grafico,
+       width = 8, height = 5, dpi = 300)
+```
+
+::: {.callout-tip appearance="simple"}
+## Cuándo usar `.rds` y cuándo CSV
+**`.rds`** preserva la estructura R completa (tipos, factores, atributos). Si guardaran un modelo de regresión, una lista anidada o un tibble con variables tipo *factor*, el CSV las aplanaría a texto y perderían información. **CSV** es para intercambio entre sistemas; **`.rds`** para flujos de trabajo internos en R donde valga preservar la estructura tal cual.
 :::
 
 # Tidyverse: cinco verbos
@@ -320,13 +353,18 @@ Lean el código como receta de cocina: "tomen `chile`, **y luego** filtren a qui
 
 ```{r}
 #| label: mutate
-# Recodificar educación a etiquetas legibles + crear grupo etario
+# Recodificar educación a etiquetas legibles + crear grupo etario.
+# `educación` se define como factor ordenado para preservar el orden
+# lógico Primaria → Secundaria → Post-secundaria en las gráficas.
 chile_anotado <- chile |>
   mutate(
-    educación = recode(education,
-                          "P"  = "Primaria",
-                          "S"  = "Secundaria",
-                          "PS" = "Post-secundaria"),
+    educación = factor(
+      recode(education,
+             "P"  = "Primaria",
+             "S"  = "Secundaria",
+             "PS" = "Post-secundaria"),
+      levels = c("Primaria", "Secundaria", "Post-secundaria")
+    ),
     grupo_etario = case_when(
       age < 30 ~ "18–29",
       age < 50 ~ "30–49",
@@ -502,43 +540,265 @@ tidy(modelo, conf.int = TRUE) |>
 tidy(modelo, conf.int = TRUE) |>
   filter(term != "(Intercept)") |>
   ggplot(aes(x = estimate, y = reorder(term, estimate))) +
-  geom_vline(xintercept = 0, linetype = "dashed", colour = "grey50") +
+  geom_vline(xintercept = 0, linetype = "dashed",
+             colour = "#38B44A", linewidth = 0.8) +
   geom_pointrange(aes(xmin = conf.low, xmax = conf.high),
                   colour = "#e70033", linewidth = 0.8) +
   labs(
     title = "¿Qué predice el apoyo al status quo? (Chile, 1988)",
+    subtitle = "Línea verde marca efecto nulo (coeficiente = 0)",
     x = "Coeficiente (efecto sobre apoyo al status quo)",
     y = NULL
   ) +
   theme_minimal()
 ```
 
-## Ampliación opcional: regresión logística sobre el voto
+## Efectos marginales: predicciones del modelo
 
-El modelo lineal de arriba trata `statusquo` como variable continua. Cuando la dependiente es **categórica** (Sí / No / Indeciso / Abstención), corresponde una **regresión logística** (binaria) o **multinomial**. Lo dejamos como demo no ejecutada — quienes tomen SOCI 4186 verán esto en clase la próxima semana.
+Los coeficientes cuentan la mitad de la historia. Lo que comunica mejor un modelo a una audiencia no técnica son las **predicciones marginales**: dado un valor específico de una variable y manteniendo las demás constantes (en su media o moda), ¿qué apoyo al *status quo* predice el modelo? El paquete `ggeffects` calcula estas predicciones con intervalos de confianza en un solo paso y las devuelve listas para `ggplot2`.
 
 ```{r}
-#| label: glm-demo
-#| eval: false
-# Recodificar voto a binario: 1 = Sí a Pinochet, 0 = lo demás
-chile_glm <- chile |>
-  mutate(voto_si = ifelse(vote == "Y", 1L, 0L))
+#| label: efectos-paquete
+library(ggeffects)
+```
 
-# Regresión logística
+### Efecto marginal del ingreso
+
+```{r}
+#| label: fig-efecto-income
+#| fig-cap: "Apoyo al status quo según ingreso, manteniendo edad, sexo y educación en sus valores típicos"
+#| fig-width: 8
+#| fig-height: 4
+pred_income <- ggpredict(modelo, terms = "income [all]")
+
+ggplot(pred_income, aes(x = x, y = predicted)) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high),
+              fill = "#e70033", alpha = 0.20) +
+  geom_line(colour = "#e70033", linewidth = 1) +
+  labs(
+    title = "Apoyo predicho al status quo según ingreso",
+    subtitle = "Resto de variables en sus valores típicos (referencia)",
+    x = "Ingreso mensual (pesos chilenos, 1988)",
+    y = "Apoyo al status quo (predicho)"
+  ) +
+  theme_minimal()
+```
+
+Pendiente positiva suave: más ingreso, algo más de apoyo al régimen — coherente con el coeficiente pero ahora expresado en la escala original de la variable dependiente.
+
+### Efecto marginal de la edad, separado por sexo
+
+```{r}
+#| label: fig-efecto-age-sex
+#| fig-cap: "Apoyo al status quo según edad, separado por sexo, con intervalo de confianza 95%"
+#| fig-width: 8
+#| fig-height: 5
+pred_age_sex <- ggpredict(modelo, terms = c("age [20:70]", "sex"))
+
+ggplot(pred_age_sex, aes(x = x, y = predicted, colour = group, fill = group)) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high),
+              alpha = 0.15, colour = NA) +
+  geom_line(linewidth = 1.1) +
+  scale_colour_manual(values = c("F" = "#e70033", "M" = "#1f4e79"),
+                      labels = c("F" = "Mujeres", "M" = "Hombres")) +
+  scale_fill_manual(values = c("F" = "#e70033", "M" = "#1f4e79"),
+                    labels = c("F" = "Mujeres", "M" = "Hombres")) +
+  labs(
+    title = "Apoyo predicho al status quo por edad y sexo",
+    x = "Edad (años)",
+    y = "Apoyo al status quo (predicho)",
+    colour = "Sexo",
+    fill = "Sexo"
+  ) +
+  theme_minimal()
+```
+
+### Efecto marginal de la educación
+
+```{r}
+#| label: fig-efecto-edu
+#| fig-cap: "Apoyo al status quo predicho por nivel educativo, con intervalo de confianza 95%"
+#| fig-width: 7
+#| fig-height: 4
+pred_edu <- ggpredict(modelo, terms = "education")
+
+ggplot(pred_edu, aes(x = x, y = predicted)) +
+  geom_pointrange(aes(ymin = conf.low, ymax = conf.high),
+                  colour = "#e70033", linewidth = 0.9, size = 0.8) +
+  labs(
+    title = "Apoyo predicho al status quo por nivel educativo",
+    subtitle = "P = Primaria · S = Secundaria · PS = Post-secundaria",
+    x = "Nivel educativo",
+    y = "Apoyo al status quo (predicho)"
+  ) +
+  theme_minimal()
+```
+
+::: {.callout-tip appearance="simple"}
+## Coeficientes vs. predicciones marginales
+Un coeficiente dice *cuánto cambia Y por unidad de X, ceteris paribus*. Una predicción marginal dice *qué valor de Y predice el modelo para este perfil concreto*. Para una audiencia no técnica (comités, prensa, entrevistas), las predicciones marginales comunican mejor porque están en la escala de la variable original — sin logaritmos, sin log-odds, sin "unidad estándar".
+:::
+
+# Regresión logística sobre el voto
+
+El modelo lineal de arriba trata `statusquo` como variable continua. Cuando la dependiente es **categórica** (Sí / No / Indeciso / Abstención), corresponde una **regresión logística**. Trabajaremos primero la versión **binaria** (voto Sí vs. voto No) y luego la **multinomial** (las cuatro categorías).
+
+## Preparar una variable binaria
+
+La binomización no es inocua. Fundir *No + Abstención + Indeciso* en una sola categoría "no-Sí" mezcla **oposición explícita** con **no-respuesta** — tres posiciones políticamente distintas. La pregunta sustantiva interesante es: *entre quienes sí tomaron posición, ¿qué predice el voto Sí frente al No?* Por eso restringimos el modelo a las dos categorías que constituyen una elección polar.
+
+```{r}
+#| label: voto-binario
+chile_glm <- chile |>
+  filter(vote %in% c("Y", "N")) |>        # solo quienes tomaron posición
+  mutate(voto_si = as.integer(vote == "Y"))
+
+chile_glm |>
+  count(vote, voto_si) |>
+  arrange(vote)
+```
+
+Quedan aproximadamente **1 757 casos** (868 Sí + 889 No), excluyendo a 588 indecisos, 187 abstencionistas y 168 sin respuesta registrada. El modelo estimará probabilidad de voto Sí **condicional a haber tomado posición**.
+
+## Ajustar el modelo logístico
+
+```{r}
+#| label: glm-fit
 m_logit <- glm(voto_si ~ age + sex + education + income + statusquo,
                data = chile_glm, family = binomial)
 summary(m_logit)
-
-# Probabilidades predichas por nivel educativo, manteniendo lo demás constante
-library(emmeans)
-emmeans(m_logit, ~ education, type = "response")
 ```
 
+Los coeficientes están en **log-odds**: son difíciles de interpretar en su escala original. Una tabla con intervalos de confianza y la exponenciación a **odds ratios** es más legible:
+
 ```{r}
-#| label: multinom-demo
-#| eval: false
-# Modelo multinomial con las cuatro categorías originales
+#| label: glm-tidy
+tidy(m_logit, conf.int = TRUE, exponentiate = TRUE) |>
+  mutate(across(where(is.numeric), \(x) round(x, 3)))
+```
+
+Con `exponentiate = TRUE`, `estimate` pasa a ser **odds ratio**: valores mayores que 1 aumentan la probabilidad de votar Sí; menores que 1 la disminuyen; igual a 1 indica ausencia de efecto.
+
+## Coefplot con línea de referencia en el cero
+
+```{r}
+#| label: fig-glm-coef
+#| fig-cap: "Coeficientes logísticos con intervalo de confianza 95% — línea verde marca el cero (log-odds)"
+#| fig-width: 8
+#| fig-height: 4
+tidy(m_logit, conf.int = TRUE) |>
+  filter(term != "(Intercept)") |>
+  ggplot(aes(x = estimate, y = reorder(term, estimate))) +
+  geom_vline(xintercept = 0, linetype = "dashed",
+             colour = "#38B44A", linewidth = 0.8) +
+  geom_pointrange(aes(xmin = conf.low, xmax = conf.high),
+                  colour = "#e70033", linewidth = 0.8) +
+  labs(
+    title = "Predictores del voto Sí (Chile, 1988)",
+    subtitle = "Coeficientes en log-odds — línea verde marca efecto nulo",
+    x = "Coeficiente (log-odds)",
+    y = NULL
+  ) +
+  theme_minimal()
+```
+
+## Efectos marginales del modelo logístico
+
+Los efectos marginales en la escala original (probabilidad de 0 a 1) son la forma más legible de comunicar un modelo logístico.
+
+### Probabilidad predicha de voto Sí según `statusquo`
+
+```{r}
+#| label: fig-glm-statusquo
+#| fig-cap: "Probabilidad predicha de voto Sí según apoyo al status quo, con intervalo de confianza 95%"
+#| fig-width: 8
+#| fig-height: 4
+pred_sq <- ggpredict(m_logit, terms = "statusquo [all]")
+
+ggplot(pred_sq, aes(x = x, y = predicted)) +
+  geom_hline(yintercept = 0.5, linetype = "dashed",
+             colour = "#38B44A", linewidth = 0.8) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high),
+              fill = "#e70033", alpha = 0.20) +
+  geom_line(colour = "#e70033", linewidth = 1) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1),
+                     limits = c(0, 1)) +
+  labs(
+    title = "Probabilidad predicha de voto Sí según actitud hacia el status quo",
+    subtitle = "Línea verde en 50% = umbral de clasificación",
+    x = "Actitud hacia el status quo (estandarizada)",
+    y = "Probabilidad de voto Sí"
+  ) +
+  theme_minimal()
+```
+
+La curva logística clásica: pasa por 50 % alrededor de `statusquo ≈ 0` y satura en los extremos. El **umbral de clasificación** del 50 % se usa a menudo para convertir probabilidades en clases.
+
+### Probabilidad de voto Sí por nivel educativo
+
+```{r}
+#| label: fig-glm-edu
+#| fig-cap: "Probabilidad predicha de voto Sí por nivel educativo — línea verde = nivel basal del 50%"
+#| fig-width: 7
+#| fig-height: 4
+pred_edu_glm <- ggpredict(m_logit, terms = "education")
+
+ggplot(pred_edu_glm, aes(x = x, y = predicted)) +
+  geom_hline(yintercept = 0.5, linetype = "dashed",
+             colour = "#38B44A", linewidth = 0.8) +
+  geom_pointrange(aes(ymin = conf.low, ymax = conf.high),
+                  colour = "#e70033", linewidth = 0.9, size = 0.8) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1),
+                     limits = c(0, 1)) +
+  labs(
+    title = "Probabilidad predicha de voto Sí por nivel educativo",
+    subtitle = "P = Primaria · S = Secundaria · PS = Post-secundaria",
+    x = "Nivel educativo",
+    y = "Probabilidad de voto Sí"
+  ) +
+  theme_minimal()
+```
+
+### Probabilidad de voto Sí por edad, separada por sexo
+
+```{r}
+#| label: fig-glm-age-sex
+#| fig-cap: "Probabilidad predicha de voto Sí por edad y sexo, con intervalo de confianza 95%"
+#| fig-width: 8
+#| fig-height: 5
+pred_age_sex_glm <- ggpredict(m_logit, terms = c("age [20:70]", "sex"))
+
+ggplot(pred_age_sex_glm, aes(x = x, y = predicted, colour = group, fill = group)) +
+  geom_hline(yintercept = 0.5, linetype = "dashed",
+             colour = "#38B44A", linewidth = 0.8) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high),
+              alpha = 0.15, colour = NA) +
+  geom_line(linewidth = 1.1) +
+  scale_colour_manual(values = c("F" = "#e70033", "M" = "#1f4e79"),
+                      labels = c("F" = "Mujeres", "M" = "Hombres")) +
+  scale_fill_manual(values = c("F" = "#e70033", "M" = "#1f4e79"),
+                    labels = c("F" = "Mujeres", "M" = "Hombres")) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1),
+                     limits = c(0, 1)) +
+  labs(
+    title = "Probabilidad predicha de voto Sí por edad y sexo",
+    x = "Edad (años)",
+    y = "Probabilidad de voto Sí",
+    colour = "Sexo",
+    fill = "Sexo"
+  ) +
+  theme_minimal()
+```
+
+## Regresión multinomial: las cuatro categorías de voto
+
+La logística binaria colapsa toda la oposición (No, Indeciso, Abstención) en "no-Sí". Si la pregunta sustantiva distingue entre **quienes rechazan el régimen** y **quienes no se pronuncian**, conviene una regresión **multinomial** con las cuatro categorías originales.
+
+```{r}
+#| label: multinom-fit
+#| results: hide
 library(nnet)
+
 chile_multi <- chile |>
   mutate(vote_multi = factor(vote,
                              levels = c("N", "Y", "A", "U"),
@@ -546,25 +806,98 @@ chile_multi <- chile |>
 
 m_multi <- multinom(vote_multi ~ age + sex + education + income + statusquo,
                     data = chile_multi)
+```
+
+```{r}
+#| label: multinom-summary
 summary(m_multi)
+```
+
+### Probabilidades multinomiales predichas por `statusquo`
+
+La gráfica más informativa del multinomial muestra **cómo cambia la probabilidad de cada categoría** según la variable clave — el apoyo al status quo.
+
+```{r}
+#| label: fig-multi-statusquo
+#| fig-cap: "Probabilidades predichas de cada categoría de voto según statusquo"
+#| fig-width: 9
+#| fig-height: 5
+pred_multi_sq <- ggpredict(m_multi, terms = "statusquo [all]")
+
+colores_voto <- c("No" = "#1f77b4",
+                  "Sí" = "#e70033",
+                  "Abstención" = "#babcbe",
+                  "Indeciso" = "#9467bd")
+
+ggplot(pred_multi_sq, aes(x = x, y = predicted, colour = response.level)) +
+  geom_hline(yintercept = 0, linetype = "dashed",
+             colour = "#38B44A", linewidth = 0.8) +
+  geom_line(linewidth = 1.2) +
+  scale_colour_manual(values = colores_voto) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1),
+                     limits = c(0, 1)) +
+  labs(
+    title = "Probabilidad predicha de cada voto según statusquo",
+    x = "Actitud hacia el status quo (estandarizada)",
+    y = "Probabilidad predicha",
+    colour = "Voto"
+  ) +
+  theme_minimal()
+```
+
+Lectura: a medida que sube `statusquo`, la probabilidad del voto **Sí** crece casi monotónica; la del **No** decrece; los indecisos y abstencionistas forman una banda intermedia que se contrae en los extremos. Esto es lo que un modelo multinomial captura y una regresión binaria aplanaría.
+
+### Probabilidades multinomiales por nivel educativo
+
+```{r}
+#| label: fig-multi-edu
+#| fig-cap: "Probabilidades predichas de cada voto por nivel educativo"
+#| fig-width: 8
+#| fig-height: 5
+pred_multi_edu <- ggpredict(m_multi, terms = "education")
+
+ggplot(pred_multi_edu, aes(x = x, y = predicted, fill = response.level)) +
+  geom_col(position = "fill") +
+  scale_fill_manual(values = colores_voto) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(
+    title = "Composición predicha del voto por nivel educativo",
+    subtitle = "P = Primaria · S = Secundaria · PS = Post-secundaria",
+    x = "Nivel educativo",
+    y = "Probabilidad predicha",
+    fill = "Voto"
+  ) +
+  theme_minimal()
 ```
 
 # Comparación de dos corpus: Cervantes (1605) vs. Galdós (1887)
 
-Esta sección descarga dos novelas del Proyecto Gutenberg y compara su vocabulario. La técnica se traslada a otros pares: prensa de dos épocas, discursos de dos presidentes, transcripciones de dos conjuntos de entrevistas, manifiestos de dos partidos.
+Esta sección compara el vocabulario de dos novelas del canon hispano. La lógica que veremos es transferible a cualquier comparación textual: prensa de dos épocas, discursos de dos presidentes, transcripciones de dos conjuntos de entrevistas, manifiestos de dos partidos. Cerraremos con un mini-ejemplo aplicado a discursos inaugurales presidenciales.
+
+::: {.callout-note appearance="simple"}
+## La lógica subyacente — texto como datos
+El análisis cuantitativo de texto pasa por **cuatro pasos casi siempre iguales** (Silge & Robinson, *Text Mining with R*; Grimmer, Roberts & Stewart, *Text as Data*, 2022):
+
+1. **Tokenizar** — partir el texto en unidades (palabras, bigramas, oraciones). Cada token pasa a ser una fila.
+2. **Limpiar** — pasar a minúsculas, remover puntuación y números, eliminar palabras vacías (*stopwords*) que aportan poco contenido.
+3. **Contar** — frecuencias absolutas y relativas por documento.
+4. **Comparar** — entre documentos, identificar qué palabras los distinguen (TF-IDF, log-ratio, *keyness*).
+
+Trabajaremos los cuatro pasos sobre el par Quijote / Fortunata.
+:::
 
 ## Paquetes para texto
 
 ```{r}
 #| label: texto-paquetes
 library(gutenbergr)  # acceso al Proyecto Gutenberg
-library(tidytext)    # texto como tabla ordenada
+library(tidytext)    # texto como tabla ordenada (Silge & Robinson)
 library(stopwords)   # palabras vacías por idioma
 ```
 
-## Cargar las dos obras
+## Cargar las dos obras (con normalización de encoding)
 
-Los dos textos vienen pre-descargados en `datos/` para que la sesión funcione sin depender de la red de la sala. Si por alguna razón faltan, el código intenta bajarlos del Proyecto Gutenberg.
+Los dos textos vienen pre-descargados en `datos/` para que la sesión funcione sin depender de la red de la sala. La función `cargar_obra()` los lee del disco; si faltaran, los bajaría del Proyecto Gutenberg.
 
 ```{r}
 #| label: corpus-cargar
@@ -573,6 +906,9 @@ cargar_obra <- function(id, ruta_local) {
     readRDS(ruta_local)
   } else {
     obra <- gutenbergr::gutenberg_download(id)
+    # Normalizar a UTF-8 al bajar fresh (algunos textos del Proyecto
+    # Gutenberg vienen en Latin1 y romperían las tildes al tokenizar).
+    obra$text <- iconv(obra$text, from = "", to = "UTF-8", sub = "")
     saveRDS(obra, ruta_local)
     obra
   }
@@ -585,9 +921,20 @@ c(quijote   = nrow(quijote),
   fortunata = nrow(fortunata))
 ```
 
-## Construir un corpus etiquetado
+::: {.callout-important appearance="simple"}
+## Nota técnica: encoding de textos del Proyecto Gutenberg
+Algunos textos viejos del Proyecto Gutenberg vienen codificados en **Latin1 / ISO-8859-1** en vez de UTF-8. Si los procesaran tal cual, las tildes y eñes se romperían y palabras como `también` aparecerían truncadas a `tambi`. La normalización a UTF-8 se hace con `iconv()`:
 
-Marcamos cada texto con su autor y unimos en una sola tabla. Esa estructura tidy permite trabajar las dos obras con los mismos verbos.
+``` r
+fortunata$text <- iconv(fortunata$text, from = "latin1", to = "UTF-8")
+```
+
+En este taller los `.rds` ya están normalizados a UTF-8, pero conviene saber que existe esta trampa: cuando vean tokens en español que parezcan mutilados, sospechen del *encoding* primero.
+:::
+
+## Construir un corpus etiquetado y tokenizar
+
+Marcamos cada texto con su autor y unimos en una sola tabla. Esa estructura *tidy* (un corpus largo con una columna que identifica al documento) es la base para aplicar los mismos verbos a las dos obras.
 
 ```{r}
 #| label: corpus-unir
@@ -603,7 +950,27 @@ palabras |>
   count(obra, name = "tokens")
 ```
 
+`unnest_tokens(palabra, text)` toma cada fila de `text` y la expande en muchas filas, una por *token*, en una nueva columna `palabra`. Pasa a minúsculas y remueve puntuación por defecto. Es la operación pivote del paquete `tidytext`.
+
+## Paso intermedio: ¿qué pasa SIN remover stopwords?
+
+Antes de limpiar, vale la pena ver el resultado crudo. Las palabras más frecuentes son siempre las mismas en cualquier texto en español: artículos, preposiciones y conjunciones. Esto nos dice poco sobre el contenido.
+
+```{r}
+#| label: frecuencias-crudas
+palabras |>
+  group_by(obra) |>
+  count(palabra, sort = TRUE) |>
+  slice_max(n, n = 5, with_ties = FALSE)
+```
+
+`de`, `que`, `la`, `y`, `a`… las mismas en ambas obras. El siguiente paso (remover *stopwords*) es el que hace visible el contenido sustantivo.
+
 ## Frecuencias relativas tras remover *stopwords*
+
+Las **palabras vacías** o *stopwords* son aquellas de altísima frecuencia y bajísima carga semántica (`el`, `la`, `de`, `que`, `y`…). El paquete `stopwords` provee listas curadas para múltiples idiomas y fuentes; usamos la lista ISO en español.
+
+Además, normalizamos a **frecuencias relativas** (proporciones) — las dos novelas tienen tamaños distintos (~380k vs. ~430k tokens), así que comparar frecuencias absolutas las haría incomparables.
 
 ```{r}
 #| label: frecuencias
@@ -615,7 +982,7 @@ frecuencias <- palabras |>
          !grepl("[0-9]", palabra)) |>
   count(obra, palabra, name = "n") |>
   group_by(obra) |>
-  mutate(frec = n / sum(n)) |>
+  mutate(frec = n / sum(n)) |>          # frecuencia relativa
   ungroup()
 
 frecuencias |>
@@ -624,9 +991,22 @@ frecuencias |>
   arrange(obra, desc(n))
 ```
 
-## Palabras distintivas de cada obra (log-ratio simple)
+`anti_join(vacias_es)` es elegante: en una sola línea, descarta cualquier fila cuya `palabra` esté en la lista de vacías. Es la forma *tidy* de "remueve estos tokens".
 
-Para identificar qué palabras caracterizan a una obra frente a la otra, comparamos sus frecuencias relativas. La razón logarítmica (log₂) entre frecuencias es positiva cuando la palabra es más típica del Quijote y negativa cuando es más típica de Fortunata.
+## Palabras distintivas (log-ratio)
+
+Las frecuencias por separado todavía mezclan tres cosas: (a) palabras que ambas obras usan mucho (verbos comunes, palabras de la vida cotidiana), (b) nombres propios de cada obra, (c) léxico realmente característico de cada una. Para aislar (b) y (c) necesitamos una **medida de contraste**.
+
+La más simple es la **razón logarítmica de frecuencias relativas** (Silge & Robinson, cap. 3; idea original en Monroe, Colaresi & Quinn, 2008, "Fightin' words"):
+
+$$
+\text{log-ratio}(w) = \log_2 \frac{\text{frec}(w \mid A) + \varepsilon}{\text{frec}(w \mid B) + \varepsilon}
+$$
+
+- **Positivo y grande** → la palabra `w` es **mucho más típica de A** que de B.
+- **Negativo y grande** → mucho más típica de B.
+- **Cercano a 0** → ambas obras la usan en proporción similar.
+- El $\varepsilon = 10^{-6}$ es una constante pequeña para evitar dividir por cero cuando una palabra aparece en una obra y no en la otra (técnica conocida como *additive smoothing*).
 
 ```{r}
 #| label: distintivas
@@ -639,10 +1019,9 @@ distintivas <- frecuencias |>
     total = frec_quijote + frec_fortunata,
     log_ratio = log2((frec_quijote + 1e-6) / (frec_fortunata + 1e-6))
   ) |>
-  filter(total > 0.0005)   # palabras que aparecen con cierta frecuencia conjunta
+  filter(total > 5e-4)   # piso de frecuencia conjunta para evitar palabras anecdóticas
 
-# Top 10 distintivas de cada lado
-top_quijote <- distintivas |> slice_max(log_ratio, n = 10)
+top_quijote   <- distintivas |> slice_max(log_ratio, n = 10)
 top_fortunata <- distintivas |> slice_min(log_ratio, n = 10)
 
 bind_rows(
@@ -651,6 +1030,8 @@ bind_rows(
 ) |>
   select(lado, palabra, frec_quijote, frec_fortunata, log_ratio)
 ```
+
+El filtro `total > 5e-4` deja fuera palabras de frecuencia conjunta extremadamente baja: queremos contraste sobre vocabulario que **realmente aparece**, no sobre rarezas que distorsionan el log-ratio por el efecto del suavizado.
 
 ## Visualizar las palabras distintivas
 
@@ -667,11 +1048,13 @@ bind_rows(
              y = reorder(palabra, log_ratio),
              fill = lado)) +
   geom_col() +
+  geom_vline(xintercept = 0, linetype = "dashed",
+             colour = "#38B44A", linewidth = 0.8) +
   scale_fill_manual(values = c("Quijote (Cervantes, 1605)" = "#e70033",
                                "Fortunata (Galdós, 1887)"  = "#1f4e79")) +
   labs(
     title = "Vocabulario distintivo: Cervantes (1605) vs. Galdós (1887)",
-    subtitle = "log₂ de la razón de frecuencias relativas — positivo: más típico del Quijote",
+    subtitle = "log₂ de la razón de frecuencias relativas — línea verde = frecuencia equivalente",
     x = "log₂(frec Quijote / frec Fortunata)",
     y = NULL,
     fill = NULL
@@ -679,22 +1062,76 @@ bind_rows(
   theme_minimal()
 ```
 
-Tres patrones que conviene comentar en sala:
+### Lectura del gráfico — tres patrones para discutir
 
-1. **Onomástica**: cada novela está dominada por sus propios protagonistas (`don`, `quijote`, `sancho` vs. `fortunata`, `juanito`, `maxi`).
-2. **Registro y mundo material**: el léxico del Quijote remite a la caballería andante (`merced`, `caballero`, `escudero`); el de Galdós, a la vida burguesa madrileña (`madrid`, `casa`, `calle`, `dinero`).
-3. **Verbos del decir**: ambas novelas usan mucho `dijo`, `respondió`, lo cual revela la centralidad del diálogo en la novela hispana — pero la frecuencia relativa difiere y aparece en la cola de la lista.
+1. **Onomástica**. Cada novela está dominada por sus propios protagonistas (`don`, `quijote`, `sancho`, `dulcinea`, `rocinante` vs. `fortunata`, `juanito`, `jacinta`, `maxi`, `lupe`). Un análisis textual ingenuo se queda aquí. Lo interesante empieza cuando los nombres se filtran fuera.
+2. **Mundo material y registro**. Tras los nombres, lo que distingue al Quijote es el léxico de la **caballería andante**: `merced`, `caballero`, `escudero`, `vos`, `mesmo` (variante arcaica), `desta` (apócope arcaica). Lo que distingue a Fortunata es el léxico de la **burguesía madrileña del XIX**: `madrid`, `casa`, `calle`, junto a marcadores del realismo galdosiano.
+3. **Marcadores diacrónicos**. `vos`, `mesmo`, `desta` son rasgos del español áureo (siglos XVI–XVII). Su ausencia casi total en Galdós no es accidente: el español ya había completado la sustitución de `vos` por `usted` y la simplificación de las contracciones preposicionales. La distancia léxica reproduce la distancia temporal.
 
-## Más allá de este par
+::: {.callout-tip appearance="simple"}
+## Si han hecho análisis de discurso cualitativo
+Lo que en grounded theory llamarían "códigos *in vivo*" — términos del corpus que cargan sentido propio — emerge aquí como palabras de **alto log-ratio**: el método cuantitativo no reemplaza la lectura cercana, pero le señala dónde mirar.
+:::
 
-Con `gutenbergr::gutenberg_works(languages = "es")` pueden listar más de 1.500 obras en español. Para repetir este ejercicio con otro par, basta con cambiar los IDs en la función `cargar_obra()`.
+## Aplicación: discursos inaugurales presidenciales
+
+La misma lógica funciona sobre **discursos políticos**. El paquete `quanteda` (Benoit et al., 2018) trae un corpus de discursos inaugurales de presidentes de EEUU (1789–presente) y una función `textstat_keyness()` que generaliza la idea de log-ratio a una prueba estadística (chi-cuadrado o log-likelihood). Es lo que usaríamos en un análisis publicable.
+
+El siguiente bloque es **demostrativo** (no se ejecuta por defecto para no añadir paquetes pesados al taller). Para correrlo: `install.packages(c("quanteda", "quanteda.textstats", "quanteda.textplots"))`.
+
+```{r}
+#| label: presidencial-demo
+#| eval: false
+library(quanteda)
+library(quanteda.textstats)
+library(quanteda.textplots)
+
+# 1. Corpus de discursos inaugurales (viene incluido en quanteda)
+corp_inaug <- data_corpus_inaugural
+summary(corp_inaug, 5)
+
+# 2. Tokenizar, limpiar y armar matriz documento-característica (DFM)
+toks_inaug <- tokens(corp_inaug,
+                     remove_punct = TRUE,
+                     remove_numbers = TRUE) |>
+  tokens_tolower() |>
+  tokens_remove(stopwords("en"))
+
+dfm_inaug <- dfm(toks_inaug)
+
+# 3. Comparar Obama (2009) vs. Trump (2017)
+dfm_comp <- dfm_inaug |>
+  dfm_subset(President %in% c("Obama", "Trump") &
+               Year %in% c(2009, 2017))
+
+k <- textstat_keyness(dfm_comp,
+                      target = docvars(dfm_comp)$President == "Obama")
+
+# 4. Visualizar
+textplot_keyness(k, n = 15) +
+  labs(title = "Vocabulario distintivo: Obama (2009) vs. Trump (2017)")
+```
+
+La salida es un gráfico análogo al nuestro: barras a un lado por palabras más típicas de Obama (típicamente: `nation`, `crisis`, `responsibility`, `journey`), al otro por las de Trump (`america`, `american`, `back`, `dreams`). El método es el mismo que usamos con Cervantes/Galdós; la diferencia es solo el corpus.
+
+## Otros pares para repetir el ejercicio
+
+Con `gutenbergr::gutenberg_works(languages = "es")` pueden listar más de 1.500 obras en español. Cualquier par funciona — basta cambiar los IDs en `cargar_obra()`. Algunas combinaciones interesantes:
+
+| Comparación | IDs | Pregunta posible |
+|-------------|-----|------------------|
+| Cervantes (1605) vs. Galdós (1887) | 2000 / 17013 | ¿Cómo cambia el español literario en tres siglos? |
+| Galdós vs. Pardo Bazán | 17013 / *otro id* | ¿Difiere el realismo madrileño del gallego? |
+| Hostos (PR/RD) vs. Martí (Cuba) | *ids varios* | ¿Léxico común del antillanismo del XIX? |
+| Discursos US (Obama vs. Trump) | `data_corpus_inaugural` | ¿Cambio retórico entre administraciones? |
 
 ```{r}
 #| label: gutenberg-mas
 #| eval: false
 obras_es <- gutenberg_works(languages = "es")
 obras_es |>
-  filter(grepl("Baroja|Pardo Bazán|Unamuno|Hostos", author, ignore.case = TRUE)) |>
+  filter(grepl("Baroja|Pardo Bazán|Unamuno|Hostos|Martí",
+               author, ignore.case = TRUE)) |>
   select(gutenberg_id, title, author)
 ```
 
@@ -717,7 +1154,8 @@ obras_es |>
 | **Introducción a la ciencia de datos** (Irizarry, español, gratuito)       | <https://rafalab.dfci.harvard.edu/dslibro/>             |
 | **Text Mining with R** (Silge & Robinson)                                  | <https://www.tidytextmining.com/>                       |
 | **An R Companion to Applied Regression** (Fox & Weisberg, casa de `carData`) | <https://socialsciences.mcmaster.ca/jfox/Books/Companion/> |
-| **Hojas de referencia rápida** de Posit                                    | <https://posit.co/resources/cheatsheets/>               |
+| **Hojas de referencia rápida** de Posit (en línea)                         | <https://posit.co/resources/cheatsheets/>               |
+| **Hojas de referencia rápida — copia local en este repo (EN + ES)**        | carpeta `cheatsheets/` (10 paquetes, ver `cheatsheets/README.md`) |
 | **Posit Cloud** (R en el navegador, sin instalar)                          | <https://posit.cloud/>                                  |
 | **StackOverflow — etiqueta R**                                             | <https://stackoverflow.com/questions/tagged/r>          |
 | **Proyecto Gutenberg en español**                                          | <https://www.gutenberg.org/browse/languages/es>         |

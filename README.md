@@ -19,20 +19,9 @@ Introducción práctica a R y RStudio para personas en Ciencias Sociales y Human
 
 La parte introductoria (instalación, RStudio, calculadora, asignación, vectores, funciones, tipos de datos, conceptos básicos de programación) sigue los **capítulos 1–3** del libro de **Rafael A. Irizarry, *Introducción a la ciencia de datos*** (Harvard, edición en español, gratuito): <https://rafalab.dfci.harvard.edu/dslibro/>. Los casos sustantivos (Chile 1988, Cervantes/Galdós) y la adaptación a CSyH son contribución del autor.
 
-## Agenda (120 minutos)
+## Contenido del documento
 
-| Bloque | Min     | Tema                                            |
-|--------|---------|-------------------------------------------------|
-| 0      | 0–5     | Bienvenida y por qué R en CSyH                  |
-| 1      | 5–20    | RStudio + R como calculadora                    |
-| 2      | 20–40   | Importar y explorar datos (encuesta Chile 1988) |
-| 3      | 40–60   | Tidyverse — cinco verbos                        |
-| 4      | 60–80   | Visualización con `ggplot2`                     |
-| 5      | 80–95   | Modelo lineal: economía política del voto       |
-| 6      | 95–115  | Comparación de corpus: Cervantes vs. Galdós     |
-| 7      | 115–120 | Recursos y cierre                               |
-
-> **Plan B**: si los bloques 1–4 se extienden, el bloque 6 puede recortarse a una demo de 8 minutos centrada solo en la tabla de palabras distintivas; el bloque 5 puede reducirse al `summary(modelo)` sin la tabla `broom` ni el forest plot.
+El `.qmd` y su `.html` renderizado funcionan como **revisión a vuelo de pájaro** de capacidades de R relevantes para CSyH. Las secciones cubren: introducción a RStudio y R como calculadora; importación y exploración de datos; los cinco verbos del *tidyverse*; visualización con `ggplot2`; modelo lineal con efectos marginales (`ggeffects`) y ampliación opcional a regresión logística/multinomial; análisis comparado de corpus (Cervantes vs. Galdós) con sub-bloque sobre discursos inaugurales; guardar y exportar datos en múltiples formatos.
 
 ## Antes del taller
 
@@ -42,7 +31,7 @@ La parte introductoria (instalación, RStudio, calculadora, asignación, vectore
 
    **Tools → Global Options → Code → Saving → Default text encoding: UTF-8**
 
-   El material del taller usa nombres de objetos en español (`año_referéndum`, `educación`). R los acepta sin problema, pero el archivo debe leerse en UTF-8. Si en algún momento abren un *script* y ven símbolos raros (`â€`, `Ã±`), recárguenlo con **File → Reopen with Encoding → UTF-8**.
+   El material del taller usa nombres de objetos en español (`año_referéndum`, `educación`). R los acepta sin problema, pero el archivo debe leerse en UTF-8. Si en algún momento abrieran un *script* y vieran símbolos raros (`â€`, `Ã±`), recárguenlo con **File → Reopen with Encoding → UTF-8**.
 
 4. **Correr `instalacion.R`** una sola vez para instalar los paquetes:
 
@@ -65,6 +54,8 @@ La parte introductoria (instalación, RStudio, calculadora, asignación, vectore
 | `datos/chile.csv`                  | Encuesta Chile 1988 exportada a CSV (demo de `read_csv`).                         |
 | `datos/quijote.rds`                | *Don Quijote* pre-descargado (Cervantes, 1605, ~37k líneas).                      |
 | `datos/fortunata.rds`              | *Fortunata y Jacinta* pre-descargada (Galdós, 1887, ~42k líneas).                 |
+| `cheatsheets/en/`                  | 10 hojas de referencia rápida de Posit en inglés (PDF).                           |
+| `cheatsheets/es/`                  | 9 hojas equivalentes en español (PDF). Ver `cheatsheets/README.md` para el índice.|
 
 ## Cómo abrir y ejecutar
 
@@ -87,8 +78,11 @@ tidyverse     # dplyr + ggplot2 + readr + amigos
 scales        # formato de ejes (porcentajes)
 carData       # encuesta Chile 1988
 broom         # tablas tidy de modelos
-haven         # importar SPSS y Stata (opcional)
-readxl        # importar Excel (opcional)
+emmeans       # medias marginales y probabilidades predichas
+ggeffects     # efectos marginales con intervalos de confianza
+haven         # leer/escribir SPSS y Stata (opcional)
+readxl        # leer Excel (opcional)
+writexl       # escribir Excel (opcional)
 gutenbergr    # Proyecto Gutenberg
 tidytext      # tokenización
 stopwords     # palabras vacías por idioma

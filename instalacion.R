@@ -18,10 +18,13 @@ paquetes <- c(
 
   # Modelado
   "broom",       # convertir modelos en tablas tidy
+  "emmeans",     # medias marginales y probabilidades predichas (glm/multinom)
+  "ggeffects",   # efectos marginales con intervalos de confianza para ggplot2
 
-  # Importación opcional
-  "haven",       # SPSS (.sav) y Stata (.dta)
-  "readxl",      # Excel (.xlsx)
+  # Importación y exportación opcional
+  "haven",       # leer/escribir SPSS (.sav) y Stata (.dta)
+  "readxl",      # leer Excel (.xlsx)
+  "writexl",     # escribir Excel (.xlsx)
 
   # Análisis de texto en español
   "gutenbergr",  # Proyecto Gutenberg

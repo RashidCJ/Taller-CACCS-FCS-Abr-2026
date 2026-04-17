@@ -21,7 +21,7 @@
 #   (año_referéndum, educación). Para que R los lea correctamente,
 #   RStudio debe guardar y leer en UTF-8:
 #     Tools → Global Options → Code → Saving → Default text encoding: UTF-8
-#   Si abren el archivo y ven símbolos raros (â€, Ã±), recárguenlo con:
+#   Si abrieran el archivo y vieran símbolos raros (â€, Ã±), recárguenlo con:
 #     File → Reopen with Encoding → UTF-8
 # ============================================================================
 
@@ -67,8 +67,18 @@ library(carData)
 
 # Cargar el dataset incluido en el paquete
 data(Chile)
-chile <- as_tibble(Chile)
+# ?Chile — ejecutar en consola para abrir la documentación
+
+# Reordenar education al orden lógico (P → S → PS) en vez del alfabético
+# que sería P → PS → S. Se propaga a todas las gráficas y modelos.
+chile <- as_tibble(Chile) |>
+  mutate(education = factor(education, levels = c("P", "S", "PS")))
 chile
+
+# Exporta datos de Chile como chile.csv (solo si no existe — evita sobrescribir)
+if (!file.exists("datos/chile.csv")) {
+  write_csv(Chile, "datos/chile.csv")
+}
 
 # El mismo dataset desde un CSV externo
 chile_csv <- read_csv("datos/chile.csv")
@@ -80,7 +90,7 @@ summary(chile)
 names(chile)
 head(chile, 5)
 
-# Otros formatos (no se ejecuta — solo referencia)
+# Otros formatos de importación (no se ejecuta — solo referencia)
 if (FALSE) {
   library(haven)
   datos_spss  <- read_sav("archivo.sav")
@@ -88,6 +98,34 @@ if (FALSE) {
 
   library(readxl)
   datos_xlsx  <- read_excel("archivo.xlsx")
+}
+
+# Guardar y exportar (no se ejecuta — solo referencia)
+# Regla práctica: CSV para intercambio universal, .rds para preservar
+# objetos R con todos sus atributos, .sav/.dta para SPSS/Stata,
+# .xlsx para audiencias administrativas.
+if (FALSE) {
+  # CSV (universal)
+  write_csv(chile, "datos/chile_export.csv")
+
+  # RDS (nativo de R — preserva tipos, factores, atributos)
+  saveRDS(chile, "datos/chile.rds")
+  chile_recuperado <- readRDS("datos/chile.rds")
+
+  # SPSS y Stata (preservan etiquetas)
+  library(haven)
+  write_sav(chile, "datos/chile.sav")
+  write_dta(chile, "datos/chile.dta")
+
+  # Excel
+  library(writexl)
+  write_xlsx(chile, "datos/chile.xlsx")
+
+  # Guardar un gráfico de ggplot2
+  library(ggplot2)
+  mi_grafico <- ggplot(chile, aes(x = age, y = statusquo)) + geom_point()
+  ggsave("figuras/dispersion_chile.png", mi_grafico,
+         width = 8, height = 5, dpi = 300)
 }
 
 
@@ -107,13 +145,18 @@ chile |>
   summarise(apoyo_medio = mean(statusquo, na.rm = TRUE),
             n = n())
 
-# Mutate: recodificar y crear grupo etario
+# Mutate: recodificar y crear grupo etario.
+# educación se define como factor ordenado para preservar el orden
+# lógico Primaria → Secundaria → Post-secundaria en las gráficas.
 chile_anotado <- chile |>
   mutate(
-    educación = recode(education,
-                          "P"  = "Primaria",
-                          "S"  = "Secundaria",
-                          "PS" = "Post-secundaria"),
+    educación = factor(
+      recode(education,
+             "P"  = "Primaria",
+             "S"  = "Secundaria",
+             "PS" = "Post-secundaria"),
+      levels = c("Primaria", "Secundaria", "Post-secundaria")
+    ),
     grupo_etario = case_when(
       age < 30 ~ "18–29",
       age < 50 ~ "30–49",
@@ -218,46 +261,222 @@ library(broom)
 tidy(modelo, conf.int = TRUE) |>
   mutate(across(where(is.numeric), \(x) round(x, 4)))
 
-# Forest plot de coeficientes
+# Forest plot de coeficientes (línea verde = cero, efecto nulo)
 tidy(modelo, conf.int = TRUE) |>
   filter(term != "(Intercept)") |>
   ggplot(aes(x = estimate, y = reorder(term, estimate))) +
-  geom_vline(xintercept = 0, linetype = "dashed", colour = "grey50") +
+  geom_vline(xintercept = 0, linetype = "dashed",
+             colour = "#38B44A", linewidth = 0.8) +
   geom_pointrange(aes(xmin = conf.low, xmax = conf.high),
                   colour = "#e70033", linewidth = 0.8) +
   labs(
     title = "¿Qué predice el apoyo al status quo? (Chile, 1988)",
+    subtitle = "Línea verde marca efecto nulo",
     x = "Coeficiente (efecto sobre apoyo al status quo)",
     y = NULL
   ) +
   theme_minimal()
 
 
-# Ampliación opcional: regresión logística sobre el voto (no se ejecuta)
-# Para audiencia de SOCI 4186, esto se trabaja en clase la próxima semana.
-if (FALSE) {
-  # Logística binaria: 1 = Sí a Pinochet, 0 = lo demás
-  chile_glm <- chile |>
-    mutate(voto_si = ifelse(vote == "Y", 1L, 0L))
+# Efectos marginales con ggeffects
+library(ggeffects)
 
-  m_logit <- glm(voto_si ~ age + sex + education + income + statusquo,
-                 data = chile_glm, family = binomial)
-  summary(m_logit)
+# Efecto del ingreso (continuo)
+pred_income <- ggpredict(modelo, terms = "income [all]")
+ggplot(pred_income, aes(x = x, y = predicted)) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high),
+              fill = "#e70033", alpha = 0.20) +
+  geom_line(colour = "#e70033", linewidth = 1) +
+  labs(
+    title = "Apoyo predicho al status quo según ingreso",
+    subtitle = "Resto de variables en sus valores típicos",
+    x = "Ingreso mensual (pesos chilenos, 1988)",
+    y = "Apoyo al status quo (predicho)"
+  ) +
+  theme_minimal()
 
-  library(emmeans)
-  emmeans(m_logit, ~ education, type = "response")
+# Efecto de la edad por sexo
+pred_age_sex <- ggpredict(modelo, terms = c("age [20:70]", "sex"))
+ggplot(pred_age_sex, aes(x = x, y = predicted, colour = group, fill = group)) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high),
+              alpha = 0.15, colour = NA) +
+  geom_line(linewidth = 1.1) +
+  scale_colour_manual(values = c("F" = "#e70033", "M" = "#1f4e79"),
+                      labels = c("F" = "Mujeres", "M" = "Hombres")) +
+  scale_fill_manual(values = c("F" = "#e70033", "M" = "#1f4e79"),
+                    labels = c("F" = "Mujeres", "M" = "Hombres")) +
+  labs(
+    title = "Apoyo predicho al status quo por edad y sexo",
+    x = "Edad (años)",
+    y = "Apoyo al status quo (predicho)",
+    colour = "Sexo",
+    fill = "Sexo"
+  ) +
+  theme_minimal()
 
-  # Multinomial sobre las cuatro categorías originales
-  library(nnet)
-  chile_multi <- chile |>
-    mutate(vote_multi = factor(vote,
-                               levels = c("N", "Y", "A", "U"),
-                               labels = c("No", "Sí", "Abstención", "Indeciso")))
+# Efecto de la educación (categórica)
+pred_edu <- ggpredict(modelo, terms = "education")
+ggplot(pred_edu, aes(x = x, y = predicted)) +
+  geom_pointrange(aes(ymin = conf.low, ymax = conf.high),
+                  colour = "#e70033", linewidth = 0.9, size = 0.8) +
+  labs(
+    title = "Apoyo predicho al status quo por nivel educativo",
+    subtitle = "P = Primaria · S = Secundaria · PS = Post-secundaria",
+    x = "Nivel educativo",
+    y = "Apoyo al status quo (predicho)"
+  ) +
+  theme_minimal()
 
-  m_multi <- multinom(vote_multi ~ age + sex + education + income + statusquo,
-                      data = chile_multi)
-  summary(m_multi)
-}
+
+# ---------------------------------------------------------------------------
+# Regresión logística sobre el voto (binaria)
+# ---------------------------------------------------------------------------
+
+# Binomización: solo quienes tomaron posición (Sí vs. No).
+# Excluir A (abstención) y U (indeciso) — fundirlos con No mezcla
+# oposición explícita con no-respuesta, distorsionando el modelo.
+chile_glm <- chile |>
+  filter(vote %in% c("Y", "N")) |>
+  mutate(voto_si = as.integer(vote == "Y"))
+
+chile_glm |> count(vote, voto_si) |> arrange(vote)
+
+# Ajustar modelo
+m_logit <- glm(voto_si ~ age + sex + education + income + statusquo,
+               data = chile_glm, family = binomial)
+summary(m_logit)
+
+# Tabla con odds ratios (exponentiate = TRUE)
+tidy(m_logit, conf.int = TRUE, exponentiate = TRUE) |>
+  mutate(across(where(is.numeric), \(x) round(x, 3)))
+
+# Coefplot con línea verde en el cero
+tidy(m_logit, conf.int = TRUE) |>
+  filter(term != "(Intercept)") |>
+  ggplot(aes(x = estimate, y = reorder(term, estimate))) +
+  geom_vline(xintercept = 0, linetype = "dashed",
+             colour = "#38B44A", linewidth = 0.8) +
+  geom_pointrange(aes(xmin = conf.low, xmax = conf.high),
+                  colour = "#e70033", linewidth = 0.8) +
+  labs(
+    title = "Predictores del voto Sí (Chile, 1988)",
+    subtitle = "Coeficientes en log-odds — línea verde = efecto nulo",
+    x = "Coeficiente (log-odds)",
+    y = NULL
+  ) +
+  theme_minimal()
+
+# Efectos marginales: probabilidad predicha según statusquo
+pred_sq <- ggpredict(m_logit, terms = "statusquo [all]")
+ggplot(pred_sq, aes(x = x, y = predicted)) +
+  geom_hline(yintercept = 0.5, linetype = "dashed",
+             colour = "#38B44A", linewidth = 0.8) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high),
+              fill = "#e70033", alpha = 0.20) +
+  geom_line(colour = "#e70033", linewidth = 1) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1),
+                     limits = c(0, 1)) +
+  labs(
+    title = "Probabilidad predicha de voto Sí según statusquo",
+    subtitle = "Línea verde en 50% = umbral de clasificación",
+    x = "Actitud hacia el status quo",
+    y = "Probabilidad de voto Sí"
+  ) +
+  theme_minimal()
+
+# Efectos marginales por nivel educativo
+pred_edu_glm <- ggpredict(m_logit, terms = "education")
+ggplot(pred_edu_glm, aes(x = x, y = predicted)) +
+  geom_hline(yintercept = 0.5, linetype = "dashed",
+             colour = "#38B44A", linewidth = 0.8) +
+  geom_pointrange(aes(ymin = conf.low, ymax = conf.high),
+                  colour = "#e70033", linewidth = 0.9, size = 0.8) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1),
+                     limits = c(0, 1)) +
+  labs(
+    title = "Probabilidad predicha de voto Sí por nivel educativo",
+    subtitle = "P = Primaria · S = Secundaria · PS = Post-secundaria",
+    x = "Nivel educativo",
+    y = "Probabilidad de voto Sí"
+  ) +
+  theme_minimal()
+
+# Efectos marginales por edad y sexo
+pred_age_sex_glm <- ggpredict(m_logit, terms = c("age [20:70]", "sex"))
+ggplot(pred_age_sex_glm, aes(x = x, y = predicted, colour = group, fill = group)) +
+  geom_hline(yintercept = 0.5, linetype = "dashed",
+             colour = "#38B44A", linewidth = 0.8) +
+  geom_ribbon(aes(ymin = conf.low, ymax = conf.high),
+              alpha = 0.15, colour = NA) +
+  geom_line(linewidth = 1.1) +
+  scale_colour_manual(values = c("F" = "#e70033", "M" = "#1f4e79"),
+                      labels = c("F" = "Mujeres", "M" = "Hombres")) +
+  scale_fill_manual(values = c("F" = "#e70033", "M" = "#1f4e79"),
+                    labels = c("F" = "Mujeres", "M" = "Hombres")) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1),
+                     limits = c(0, 1)) +
+  labs(
+    title = "Probabilidad predicha de voto Sí por edad y sexo",
+    x = "Edad (años)",
+    y = "Probabilidad de voto Sí",
+    colour = "Sexo",
+    fill = "Sexo"
+  ) +
+  theme_minimal()
+
+
+# ---------------------------------------------------------------------------
+# Regresión multinomial: las cuatro categorías de voto
+# ---------------------------------------------------------------------------
+
+library(nnet)
+
+chile_multi <- chile |>
+  mutate(vote_multi = factor(vote,
+                             levels = c("N", "Y", "A", "U"),
+                             labels = c("No", "Sí", "Abstención", "Indeciso")))
+
+m_multi <- multinom(vote_multi ~ age + sex + education + income + statusquo,
+                    data = chile_multi, trace = FALSE)
+summary(m_multi)
+
+# Probabilidades predichas por statusquo
+pred_multi_sq <- ggpredict(m_multi, terms = "statusquo [all]")
+
+colores_voto <- c("No" = "#1f77b4",
+                  "Sí" = "#e70033",
+                  "Abstención" = "#babcbe",
+                  "Indeciso" = "#9467bd")
+
+ggplot(pred_multi_sq, aes(x = x, y = predicted, colour = response.level)) +
+  geom_hline(yintercept = 0, linetype = "dashed",
+             colour = "#38B44A", linewidth = 0.8) +
+  geom_line(linewidth = 1.2) +
+  scale_colour_manual(values = colores_voto) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1),
+                     limits = c(0, 1)) +
+  labs(
+    title = "Probabilidad predicha de cada voto según statusquo",
+    x = "Actitud hacia el status quo",
+    y = "Probabilidad predicha",
+    colour = "Voto"
+  ) +
+  theme_minimal()
+
+# Composición predicha por educación
+pred_multi_edu <- ggpredict(m_multi, terms = "education")
+ggplot(pred_multi_edu, aes(x = x, y = predicted, fill = response.level)) +
+  geom_col(position = "fill") +
+  scale_fill_manual(values = colores_voto) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(
+    title = "Composición predicha del voto por nivel educativo",
+    subtitle = "P = Primaria · S = Secundaria · PS = Post-secundaria",
+    x = "Nivel educativo",
+    y = "Probabilidad predicha",
+    fill = "Voto"
+  ) +
+  theme_minimal()
 
 
 # ---------------------------------------------------------------------------
@@ -274,6 +493,9 @@ cargar_obra <- function(id, ruta_local) {
     readRDS(ruta_local)
   } else {
     obra <- gutenberg_download(id)
+    # Normalizar encoding a UTF-8 (algunos textos del Proyecto Gutenberg
+    # vienen en Latin1 y romperían las tildes al tokenizar).
+    obra$text <- iconv(obra$text, from = "", to = "UTF-8", sub = "")
     saveRDS(obra, ruta_local)
     obra
   }
@@ -284,6 +506,12 @@ fortunata <- cargar_obra(17013, "datos/fortunata.rds")   # Galdós, 1887
 
 c(quijote   = nrow(quijote),
   fortunata = nrow(fortunata))
+
+# Nota técnica: algunos textos viejos del Proyecto Gutenberg vienen en
+# Latin1/ISO-8859-1 en vez de UTF-8. Si los procesaran tal cual,
+# tildes y eñes se romperían (ej. "también" → "tambi"). Normalización:
+#   fortunata$text <- iconv(fortunata$text, from = "latin1", to = "UTF-8")
+# Los .rds de este taller ya están normalizados.
 
 # Construir corpus etiquetado y tokenizar
 corpus <- bind_rows(
@@ -296,6 +524,14 @@ palabras <- corpus |>
 
 palabras |>
   count(obra, name = "tokens")
+
+# Paso intermedio: frecuencias crudas SIN remover stopwords
+# (sirve para mostrar por qué hay que limpiar — las top palabras
+#  son siempre 'de', 'que', 'la', 'y' en cualquier texto en español)
+palabras |>
+  group_by(obra) |>
+  count(palabra, sort = TRUE) |>
+  slice_max(n, n = 5, with_ties = FALSE)
 
 # Frecuencias relativas tras quitar stopwords
 vacias_es <- tibble(palabra = stopwords("es", source = "stopwords-iso"))
@@ -344,22 +580,62 @@ bind_rows(
              y = reorder(palabra, log_ratio),
              fill = lado)) +
   geom_col() +
+  geom_vline(xintercept = 0, linetype = "dashed",
+             colour = "#38B44A", linewidth = 0.8) +
   scale_fill_manual(values = c("Quijote (Cervantes, 1605)" = "#e70033",
                                "Fortunata (Galdós, 1887)"  = "#1f4e79")) +
   labs(
     title = "Vocabulario distintivo: Cervantes (1605) vs. Galdós (1887)",
-    subtitle = "log2 de la razón de frecuencias relativas",
+    subtitle = "log2 de la razón de frecuencias relativas — verde = frecuencia equivalente",
     x = "log2(frec Quijote / frec Fortunata)",
     y = NULL,
     fill = NULL
   ) +
   theme_minimal()
 
+
+# ---------------------------------------------------------------------------
+# Aplicación: discursos inaugurales presidenciales (no se ejecuta)
+# Misma lógica de vocabulario distintivo, ahora con quanteda y
+# textstat_keyness(). Para correrlo:
+#   install.packages(c("quanteda", "quanteda.textstats", "quanteda.textplots"))
+# ---------------------------------------------------------------------------
+if (FALSE) {
+  library(quanteda)
+  library(quanteda.textstats)
+  library(quanteda.textplots)
+
+  # Corpus inaugural (incluido en quanteda)
+  corp_inaug <- data_corpus_inaugural
+  summary(corp_inaug, 5)
+
+  # Tokenizar, limpiar, DFM
+  toks_inaug <- tokens(corp_inaug,
+                       remove_punct = TRUE,
+                       remove_numbers = TRUE) |>
+    tokens_tolower() |>
+    tokens_remove(stopwords("en"))
+
+  dfm_inaug <- dfm(toks_inaug)
+
+  # Comparar Obama (2009) vs. Trump (2017)
+  dfm_comp <- dfm_inaug |>
+    dfm_subset(President %in% c("Obama", "Trump") &
+                 Year %in% c(2009, 2017))
+
+  k <- textstat_keyness(dfm_comp,
+                        target = docvars(dfm_comp)$President == "Obama")
+
+  textplot_keyness(k, n = 15) +
+    labs(title = "Vocabulario distintivo: Obama (2009) vs. Trump (2017)")
+}
+
+
 # Búsqueda de más obras en español (no se ejecuta — solo referencia)
 if (FALSE) {
   obras_es <- gutenberg_works(languages = "es")
   obras_es |>
-    filter(grepl("Baroja|Pardo Bazán|Unamuno|Hostos",
+    filter(grepl("Baroja|Pardo Bazán|Unamuno|Hostos|Martí",
                  author, ignore.case = TRUE)) |>
     select(gutenberg_id, title, author)
 }
