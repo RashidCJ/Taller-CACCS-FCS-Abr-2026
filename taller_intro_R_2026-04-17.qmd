@@ -1,0 +1,733 @@
+---
+title: "Taller Introducción a R"
+subtitle: "Centro Académico de Cómputos · Facultad de Ciencias Sociales · UPR-RP"
+author:
+  - name: "Rashid C.J. Marcano Rivera, Ph.D., M.S., M.A."
+    affiliation: "Departamento de Sociología y Antropología"
+date: 2026-04-17
+lang: es
+date-format: long
+format:
+  html:
+    theme: [united, tema-caccs.scss]
+    toc: true
+    toc-location: left
+    number-sections: true
+    code-fold: false
+    code-tools: true
+    embed-resources: true
+    highlight-style: monokai
+knitr:
+  opts_chunk:
+    dev: "ragg_png"
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r}
+#| label: setup
+#| include: false
+# Sembrar reproducibilidad y silenciar mensajes ruidosos al cargar tidyverse
+set.seed(2026)
+options(dplyr.summarise.inform = FALSE)
+```
+
+# Bienvenida {.unnumbered}
+
+Este taller introduce el lenguaje **R** y el entorno **RStudio** para personas en Ciencias Sociales y Humanidades. La sesión combina dos hilos sustantivos:
+
+1. **Hilo cuantitativo (política comparada)**: encuesta del referéndum chileno de 1988 (`carData::Chile`) — exploración, visualización y un modelo lineal sobre el apoyo al régimen.
+2. **Hilo cualitativo (humanidades digitales)**: comparación de frecuencias léxicas entre dos novelas del canon hispano separadas por casi tres siglos: *Don Quijote de la Mancha* (Cervantes, 1605) y *Fortunata y Jacinta* (Galdós, 1887).
+
+## Base y referencias del taller {.unnumbered}
+
+La introducción a R y RStudio (instalación, paneles, calculadora, asignación, vectores, funciones, tipos de datos y conceptos básicos de programación) toma como base los capítulos 1–3 del libro **Rafael A. Irizarry — *Introducción a la ciencia de datos*** (Harvard, edición en español, gratuito):
+
+- Capítulo 1: [Comenzando con R y RStudio](https://rafalab.dfci.harvard.edu/dslibro/getting-started.html)
+- Capítulo 2: [Conceptos básicos de R](https://rafalab.dfci.harvard.edu/dslibro/r-basics.html)
+- Capítulo 3: [Conceptos básicos de programación](https://rafalab.dfci.harvard.edu/dslibro/conceptos-básicos-de-programación.html)
+- Libro completo: <https://rafalab.dfci.harvard.edu/dslibro/>
+
+Los casos sustantivos (Chile 1988, comparación Cervantes/Galdós) y la adaptación pedagógica para audiencia CSyH son contribuciones del autor de este taller, basadas en sesiones previas dictadas en la UPR-RP.
+
+::: {.callout-note appearance="simple"}
+**Detalles logísticos**
+
+- **Fecha**: viernes 17 de abril de 2026, 10:00 a.m. – 12:00 p.m.
+- **Salón**: REB-120
+- **Recurso**: Dr. Rashid C.J. Marcano Rivera (Sociología, FCS-UPRRP)
+- **Coordinación**: CACCS — `caccs.rp@upr.edu` · Ext. 87751
+:::
+
+## Agenda (120 minutos) {.unnumbered}
+
+| Bloque | Min   | Tema                                                              |
+|--------|-------|-------------------------------------------------------------------|
+| 0      | 0–5   | Bienvenida y por qué R en CSyH                                    |
+| 1      | 5–20  | RStudio + R como calculadora                                      |
+| 2      | 20–40 | Importar y explorar datos (encuesta Chile 1988)                   |
+| 3      | 40–60 | Tidyverse — cinco verbos                                          |
+| 4      | 60–80 | Visualización con `ggplot2`                                       |
+| 5      | 80–95 | Modelo lineal: ¿quién apoyaba el régimen?                         |
+| 6      | 95–115 | Comparación de dos corpus: Cervantes vs. Galdós                  |
+| 7      | 115–120 | Recursos y cierre                                               |
+
+::: {.callout-warning appearance="simple"}
+## Plan B si el tiempo se acorta
+Los bloques **6** (comparación de corpus) y **5** (modelo lineal) son los más comprimibles. Si los bloques 1–4 toman más de lo previsto, el bloque 6 puede reducirse a una demo de 8 minutos centrada solo en la tabla de palabras distintivas.
+:::
+
+## Cómo usar este documento {.unnumbered}
+
+Hay dos tipos de recuadros con orientación según experiencia previa:
+
+::: {.callout-warning appearance="simple"}
+## Si nunca han trabajado con código
+Recuadros amarillos con contexto adicional para quienes llegan sin experiencia en programación.
+:::
+
+::: {.callout-tip appearance="simple"}
+## Si han usado SPSS o Stata
+Recuadros verdes que conectan lo que ya saben con su equivalente en R.
+:::
+
+# Por qué R en Ciencias Sociales y Humanidades
+
+R es un lenguaje creado por estadísticos como ambiente interactivo para análisis de datos. Es **gratuito, de código abierto y modular**: la comunidad ha desarrollado paquetes que cubren disciplinas desde la sociología cuantitativa y la economía política hasta la lingüística computacional, la historia digital y el análisis de redes. Usos relevantes para la facultad incluyen:
+
+- **Análisis cuantitativo de encuestas, censos y registros** — limpieza, transformación, modelos.
+- **Análisis de textos** — corpus literarios, prensa, transcripciones, discursos políticos.
+- **Visualización de datos culturales y temporales** — líneas de tiempo, mapas, comparaciones entre regiones o periodos.
+- **Reproducibilidad** — cada paso del análisis queda documentado en un *script* que ustedes (o colegas) pueden volver a correr.
+- **Acceso a datos abiertos** — desde el Banco Mundial hasta el Proyecto Gutenberg en español.
+
+::: {.callout-note appearance="simple"}
+**Antes de empezar — tres hábitos útiles** (siguiendo a Irizarry, cap. 2)
+
+1. **Saber pedir ayuda**: `help(función)` o `?función` muestra documentación interna; `args(función)` lista solo los argumentos; `??término` busca por palabra clave; [StackOverflow con la etiqueta R](https://stackoverflow.com/questions/tagged/r) cubre casi cualquier duda.
+2. **Leer los mensajes de error**: están diseñados para transmitir información. Con la práctica se vuelven informativos.
+3. **Preferir `<-` sobre `=` para asignar**: ambos funcionan, pero `<-` deja claro visualmente que se trata de una asignación y reduce confusión con argumentos de funciones que usan `=`.
+:::
+
+# RStudio y R como calculadora
+
+## Los cuatro paneles de RStudio
+
+RStudio es la interfaz que usaremos sobre R. Organiza el trabajo en cuatro paneles (Irizarry, cap. 1):
+
+- **Source** (Fuente): editor donde escribimos *scripts* y documentos Quarto.
+- **Console** (Consola): donde R ejecuta comandos y muestra resultados.
+- **Environment** (Ambiente): los objetos que vamos creando.
+- **Output** (Salida): archivos, gráficos, paquetes, ayuda.
+
+Atajos de teclado para ejecutar código desde el editor:
+
+| Acción | Mac | Windows / Linux |
+|--------|-----|-----------------|
+| Ejecutar la línea (o selección) actual | **Cmd + Return** | **Ctrl + Enter** |
+| Ejecutar el *script* completo | **Cmd + Shift + Return** | **Ctrl + Shift + Enter** |
+
+::: {.callout-important appearance="simple"}
+## Recomendación de Irizarry: no restaurar `.RData` automáticamente
+Por defecto, RStudio guarda los objetos del ambiente al cerrar y los restaura al abrir. Esto **rompe la reproducibilidad**: el *script* depende de cosas que no están escritas en él. Vayan a **Tools → Global Options → General** y:
+
+- **Desmarquen** "Restore .RData into workspace at startup"
+- En "Save workspace to .RData on exit", elijan **Never**
+
+Así cada sesión empieza limpia y todo lo que necesitan está en el *script*.
+:::
+
+## R como calculadora
+
+```{r}
+#| label: calculadora
+1 + 2
+13 / 2
+2 ^ 6
+sqrt(81)
+```
+
+## Asignar valores a objetos
+
+La asignación se hace con `<-` (preferido) o `=`. Léanlo como "este nombre **recibe** este valor".
+
+```{r}
+#| label: asignacion
+pais <- "Chile"
+pais
+
+año_referéndum <- 1988
+años_desde <- 2026 - año_referéndum
+años_desde
+
+# Valores lógicos (TRUE/FALSE)
+es_caso_estudio <- TRUE
+es_caso_estudio
+```
+
+::: {.callout-important appearance="simple"}
+## Tildes y eñes en nombres de objetos (UTF-8)
+R acepta `año_referéndum`, `educación`, `niño` o cualquier nombre con tilde o `ñ` siempre que el archivo y el editor estén en **UTF-8**. En RStudio: **Tools → Global Options → Code → Saving → Default text encoding: UTF-8**. Una vez fijado, todo *script* nuevo se guarda en UTF-8 y los nombres en español funcionan sin sorpresas. Si abren un *script* viejo y ven símbolos raros (`â€`, `Ã±`), reabran con **File → Reopen with Encoding → UTF-8**.
+:::
+
+::: {.callout-warning appearance="simple"}
+## Si nunca han trabajado con código
+Piensen en los objetos como cajitas con nombre. `pais <- "Chile"` crea una cajita llamada `pais` y le guarda el texto `"Chile"` adentro. Cada vez que escriban `pais`, R busca en la cajita y devuelve el contenido.
+:::
+
+::: {.callout-tip appearance="simple"}
+## Si han usado SPSS o Stata
+En SPSS, las variables viven dentro del *dataset* abierto. En R, los objetos viven en el ambiente (*environment*) y pueden ser números, texto, vectores o tablas completas. Es como tener varias hojas de datos abiertas a la vez, cada una con su nombre.
+:::
+
+## Vectores y funciones básicas
+
+`c()` concatena valores en un **vector** — la estructura básica de datos en R.
+
+```{r}
+#| label: vectores
+# Edades inventadas para ilustrar funciones — no son datos reales
+edades_demo <- c(23, 31, 27, 45, 38, 22, 29)
+edades_demo
+mean(edades_demo)    # promedio
+range(edades_demo)   # mínimo y máximo
+length(edades_demo)  # cantidad de elementos
+```
+
+**Prueben ustedes**: creen un vector con cinco años (por ejemplo, fechas de eventos en su área) y calculen la media y el rango.
+
+# Importar y explorar datos
+
+## Cargar paquetes
+
+Los **paquetes** extienden las capacidades de R. Se instalan una sola vez con `install.packages()` y se cargan en cada sesión con `library()`.
+
+```{r}
+#| label: paquetes
+library(tidyverse)   # dplyr + ggplot2 + readr + amigos
+library(carData)     # datasets para análisis aplicado
+```
+
+::: {.callout-warning appearance="simple"}
+## Si nunca han trabajado con código
+Los paquetes son como aplicaciones que se instalan una vez al teléfono (`install.packages()`) y se abren cada vez que se necesitan (`library()`). R base trae las apps del sistema; los paquetes son las descargadas de la tienda — gratuitas y mantenidas por la comunidad.
+:::
+
+## El caso: el referéndum chileno de 1988
+
+El **5 de octubre de 1988** los chilenos votaron en un plebiscito para decidir si Augusto Pinochet seguía en el poder ocho años más. El **No** ganó con 56 % frente a 44 % del **Sí**, abriendo el camino al regreso de la democracia. Pocos meses antes, una encuesta nacional preguntó a 2.700 personas su intención de voto, percepción del status quo y características demográficas. Ese conjunto de datos viene incluido en el paquete `carData` de John Fox (Universidad de Toronto) y es uno de los ejemplos clásicos de regresión sobre opinión política latinoamericana.
+
+```{r}
+#| label: chile-cargar
+data(Chile)
+chile <- as_tibble(Chile)   # convertir a tibble para impresión más amigable
+chile
+```
+
+## Importar el mismo conjunto desde un CSV
+
+Para que vean cómo se cargan datos externos, el mismo dataset está exportado a `datos/chile.csv`. Funciona igual desde un archivo local o una URL pública.
+
+```{r}
+#| label: importar-csv
+chile_csv <- read_csv("datos/chile.csv")
+chile_csv
+```
+
+## Explorar lo que cargamos
+
+```{r}
+#| label: explorar
+glimpse(chile)        # estructura: tipos y primeras observaciones
+summary(chile)        # resumen estadístico de cada columna
+names(chile)          # nombres de las columnas
+head(chile, 5)        # primeras 5 filas
+```
+
+**Variables**:
+
+- `region` — C (Centro), M (Metropolitana de Santiago), N (Norte), S (Sur), SA (Santiago Sur).
+- `population` — habitantes de la comunidad de la persona.
+- `sex` — F / M.
+- `age` — edad en años.
+- `education` — P (primaria), S (secundaria), PS (post-secundaria).
+- `income` — ingreso mensual en pesos chilenos de 1988.
+- `statusquo` — escala continua de apoyo al status quo (régimen militar). Estandarizada (media 0).
+- `vote` — Y (Sí, apoyo a Pinochet), N (No), U (indeciso), A (abstención).
+
+## Otros formatos
+
+```{r}
+#| label: otros-formatos
+#| eval: false
+library(haven)                          # SPSS y Stata
+datos_spss  <- read_sav("archivo.sav")  # SPSS
+datos_stata <- read_dta("archivo.dta")  # Stata
+
+library(readxl)                         # Excel
+datos_xlsx  <- read_excel("archivo.xlsx")
+```
+
+::: {.callout-tip appearance="simple"}
+## Si han usado SPSS o Stata
+`read_sav()` carga un `.sav` y devuelve un marco de datos sin necesidad de SPSS instalado. Las etiquetas de variables y valores se preservan en atributos que pueden inspeccionar con `attributes()` o convertir con `haven::as_factor()`.
+:::
+
+# Tidyverse: cinco verbos
+
+`tidyverse` reúne paquetes con una filosofía coherente para manipular datos. Los **cinco verbos esenciales** son:
+
+| Verbo         | Para qué sirve                                  |
+|---------------|-------------------------------------------------|
+| `filter()`    | seleccionar filas según condiciones             |
+| `select()`    | elegir columnas específicas                     |
+| `mutate()`    | crear o modificar variables                     |
+| `group_by()`  | agrupar por categorías                          |
+| `summarise()` | calcular estadísticas de resumen                |
+
+## Filtrar y seleccionar
+
+```{r}
+#| label: filter-select
+# Mujeres de la región Metropolitana que votarían Sí
+chile |>
+  filter(region == "M", sex == "F", vote == "Y") |>
+  select(age, education, income, statusquo) |>
+  head(10)
+```
+
+## El operador *pipe* `|>`
+
+El *pipe* canaliza el resultado de una operación hacia la siguiente. Se lee como **"y luego"**.
+
+```{r}
+#| label: pipe-ejemplo
+# Apoyo medio al status quo entre quienes declaran voto Sí
+chile |>
+  filter(vote == "Y") |>
+  summarise(apoyo_medio = mean(statusquo, na.rm = TRUE),
+            n = n())
+```
+
+::: {.callout-warning appearance="simple"}
+## Si nunca han trabajado con código
+Lean el código como receta de cocina: "tomen `chile`, **y luego** filtren a quienes votarían Sí, **y luego** resuman". Cada `|>` es un paso.
+:::
+
+## Crear nuevas variables con `mutate()`
+
+```{r}
+#| label: mutate
+# Recodificar educación a etiquetas legibles + crear grupo etario
+chile_anotado <- chile |>
+  mutate(
+    educación = recode(education,
+                          "P"  = "Primaria",
+                          "S"  = "Secundaria",
+                          "PS" = "Post-secundaria"),
+    grupo_etario = case_when(
+      age < 30 ~ "18–29",
+      age < 50 ~ "30–49",
+      TRUE     ~ "50+"
+    )
+  )
+
+chile_anotado |>
+  select(age, grupo_etario, education, educación, vote) |>
+  head(6)
+```
+
+## Resumir por grupos con `group_by()` + `summarise()`
+
+```{r}
+#| label: summarise
+# Apoyo medio al status quo por intención de voto
+chile |>
+  filter(!is.na(vote), !is.na(statusquo)) |>
+  group_by(vote) |>
+  summarise(
+    n            = n(),
+    apoyo_medio  = mean(statusquo),
+    apoyo_de     = sd(statusquo)
+  ) |>
+  arrange(desc(apoyo_medio))
+```
+
+```{r}
+#| label: summarise-cruzado
+# Cruce: educación × intención de voto
+chile_anotado |>
+  filter(!is.na(vote), !is.na(educación)) |>
+  count(educación, vote) |>
+  group_by(educación) |>
+  mutate(porcentaje = round(100 * n / sum(n), 1)) |>
+  arrange(educación, vote)
+```
+
+**Prueben ustedes**: con el mismo patrón, calculen el porcentaje de cada intención de voto **por región**. ¿Qué región es más favorable al **No**?
+
+# Visualización con ggplot2
+
+`ggplot2` construye gráficos por **capas**. Los tres componentes esenciales:
+
+- **Datos**: el conjunto que alimenta el gráfico.
+- **Mapeo estético** (`aes()`): qué variable va en cada eje, color, tamaño.
+- **Geometrías** (`geom_*`): el tipo de gráfico (puntos, líneas, barras).
+
+## Distribución del apoyo al status quo por intención de voto
+
+```{r}
+#| label: fig-statusquo-vote
+#| fig-cap: "Distribución del apoyo al status quo según intención de voto"
+#| fig-width: 8
+#| fig-height: 5
+chile |>
+  filter(!is.na(vote), !is.na(statusquo)) |>
+  ggplot(aes(x = vote, y = statusquo, fill = vote)) +
+  geom_violin(alpha = 0.6, trim = FALSE) +
+  geom_boxplot(width = 0.15, alpha = 0.85, outlier.size = 0.7) +
+  scale_fill_manual(values = c("A" = "#babcbe", "N" = "#1f77b4",
+                               "U" = "#9467bd", "Y" = "#e70033")) +
+  labs(
+    title = "Apoyo al status quo según intención de voto (Chile, 1988)",
+    subtitle = "A = abstención · N = No · U = indeciso · Y = Sí",
+    x = "Intención de voto",
+    y = "Apoyo al status quo (estandarizado)",
+    fill = NULL
+  ) +
+  theme_minimal()
+```
+
+Lectura: el voto Sí (apoyo a Pinochet) y el voto No están claramente polarizados sobre el eje del status quo. Los indecisos (U) y abstencionistas (A) ocupan el centro.
+
+## Apoyo por edad y educación
+
+```{r}
+#| label: fig-edad-educacion
+#| fig-cap: "Apoyo al status quo por edad, separado por nivel educativo"
+#| fig-width: 9
+#| fig-height: 5
+chile_anotado |>
+  filter(!is.na(statusquo), !is.na(educación)) |>
+  ggplot(aes(x = age, y = statusquo, colour = educación)) +
+  geom_point(alpha = 0.25, size = 1) +
+  geom_smooth(method = "loess", se = FALSE, linewidth = 1.1) +
+  facet_wrap(~ educación) +
+  scale_colour_manual(values = c("Primaria" = "#e70033",
+                                 "Secundaria" = "#1f77b4",
+                                 "Post-secundaria" = "#2ca02c")) +
+  labs(
+    title = "Apoyo al status quo por edad y educación (Chile, 1988)",
+    x = "Edad (años)",
+    y = "Apoyo al status quo",
+    colour = "Educación"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+::: {.callout-warning appearance="simple"}
+## Si nunca han trabajado con código
+El signo `+` en ggplot2 significa "añade esta capa al gráfico". Empezamos con un lienzo (`ggplot()`) y vamos sumando: puntos, suavizados, etiquetas, tema. Cuando algo se ve raro, a menudo falta un `+` entre líneas.
+:::
+
+## Composición del voto por región
+
+```{r}
+#| label: fig-region-vote
+#| fig-cap: "Distribución porcentual del voto por región"
+#| fig-width: 8
+#| fig-height: 5
+chile |>
+  filter(!is.na(vote)) |>
+  count(region, vote) |>
+  group_by(region) |>
+  mutate(prop = n / sum(n)) |>
+  ggplot(aes(x = region, y = prop, fill = vote)) +
+  geom_col(position = "fill") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_fill_manual(values = c("A" = "#babcbe", "N" = "#1f77b4",
+                               "U" = "#9467bd", "Y" = "#e70033")) +
+  labs(
+    title = "Composición del voto por región (Chile, 1988)",
+    x = "Región",
+    y = "Porcentaje",
+    fill = "Voto"
+  ) +
+  theme_minimal()
+```
+
+**Prueben ustedes**: cambien `position = "fill"` por `position = "dodge"`. ¿Cómo cambia la lectura?
+
+# Modelo lineal: ¿quién apoyaba el régimen?
+
+R trae la función `lm()` para ajustar modelos lineales. Es la herramienta básica de la inferencia estadística.
+
+::: {.callout-tip appearance="simple"}
+## Si han usado SPSS o Stata
+`lm()` equivale a *Analyze > Regression > Linear* en SPSS, o `regress` en Stata. La fórmula `Y ~ X1 + X2` se lee "Y en función de X1 y X2". `summary()` devuelve los coeficientes, errores estándar, valores *t* y *p* que ya conocen.
+:::
+
+## Apoyo al status quo en función de variables socioeconómicas
+
+```{r}
+#| label: lm-statusquo
+modelo <- lm(statusquo ~ income + age + sex + education,
+             data = chile)
+summary(modelo)
+```
+
+Lectura sustantiva (no es economía dura, son tendencias condicionales):
+
+- **`income`** — el coeficiente positivo, pequeño pero significativo, indica que a mayor ingreso, mayor apoyo al status quo. Es un hallazgo clásico de la literatura sobre el plebiscito chileno: las clases medias-altas urbanas favorecieron al régimen.
+- **`age`** — efecto positivo: las personas de mayor edad mostraban más apoyo. Compatible con la lectura de cohortes y memoria sobre el período Allende.
+- **`sex`** y **`education`** — los coeficientes para mujeres y para nivel educativo más alto se interpretan en relación a la categoría base (`F` para sexo, `P` —primaria— para educación).
+
+## Coeficientes en una tabla limpia
+
+```{r}
+#| label: broom-tidy
+library(broom)
+tidy(modelo, conf.int = TRUE) |>
+  mutate(across(where(is.numeric), \(x) round(x, 4)))
+```
+
+```{r}
+#| label: fig-coef
+#| fig-cap: "Coeficientes del modelo con intervalos de confianza al 95%"
+#| fig-width: 8
+#| fig-height: 4
+tidy(modelo, conf.int = TRUE) |>
+  filter(term != "(Intercept)") |>
+  ggplot(aes(x = estimate, y = reorder(term, estimate))) +
+  geom_vline(xintercept = 0, linetype = "dashed", colour = "grey50") +
+  geom_pointrange(aes(xmin = conf.low, xmax = conf.high),
+                  colour = "#e70033", linewidth = 0.8) +
+  labs(
+    title = "¿Qué predice el apoyo al status quo? (Chile, 1988)",
+    x = "Coeficiente (efecto sobre apoyo al status quo)",
+    y = NULL
+  ) +
+  theme_minimal()
+```
+
+## Ampliación opcional: regresión logística sobre el voto
+
+El modelo lineal de arriba trata `statusquo` como variable continua. Cuando la dependiente es **categórica** (Sí / No / Indeciso / Abstención), corresponde una **regresión logística** (binaria) o **multinomial**. Lo dejamos como demo no ejecutada — quienes tomen SOCI 4186 verán esto en clase la próxima semana.
+
+```{r}
+#| label: glm-demo
+#| eval: false
+# Recodificar voto a binario: 1 = Sí a Pinochet, 0 = lo demás
+chile_glm <- chile |>
+  mutate(voto_si = ifelse(vote == "Y", 1L, 0L))
+
+# Regresión logística
+m_logit <- glm(voto_si ~ age + sex + education + income + statusquo,
+               data = chile_glm, family = binomial)
+summary(m_logit)
+
+# Probabilidades predichas por nivel educativo, manteniendo lo demás constante
+library(emmeans)
+emmeans(m_logit, ~ education, type = "response")
+```
+
+```{r}
+#| label: multinom-demo
+#| eval: false
+# Modelo multinomial con las cuatro categorías originales
+library(nnet)
+chile_multi <- chile |>
+  mutate(vote_multi = factor(vote,
+                             levels = c("N", "Y", "A", "U"),
+                             labels = c("No", "Sí", "Abstención", "Indeciso")))
+
+m_multi <- multinom(vote_multi ~ age + sex + education + income + statusquo,
+                    data = chile_multi)
+summary(m_multi)
+```
+
+# Comparación de dos corpus: Cervantes (1605) vs. Galdós (1887)
+
+Esta sección descarga dos novelas del Proyecto Gutenberg y compara su vocabulario. La técnica se traslada a otros pares: prensa de dos épocas, discursos de dos presidentes, transcripciones de dos conjuntos de entrevistas, manifiestos de dos partidos.
+
+## Paquetes para texto
+
+```{r}
+#| label: texto-paquetes
+library(gutenbergr)  # acceso al Proyecto Gutenberg
+library(tidytext)    # texto como tabla ordenada
+library(stopwords)   # palabras vacías por idioma
+```
+
+## Cargar las dos obras
+
+Los dos textos vienen pre-descargados en `datos/` para que la sesión funcione sin depender de la red de la sala. Si por alguna razón faltan, el código intenta bajarlos del Proyecto Gutenberg.
+
+```{r}
+#| label: corpus-cargar
+cargar_obra <- function(id, ruta_local) {
+  if (file.exists(ruta_local)) {
+    readRDS(ruta_local)
+  } else {
+    obra <- gutenbergr::gutenberg_download(id)
+    saveRDS(obra, ruta_local)
+    obra
+  }
+}
+
+quijote   <- cargar_obra(2000,  "datos/quijote.rds")     # Cervantes, 1605
+fortunata <- cargar_obra(17013, "datos/fortunata.rds")   # Galdós, 1887
+
+c(quijote   = nrow(quijote),
+  fortunata = nrow(fortunata))
+```
+
+## Construir un corpus etiquetado
+
+Marcamos cada texto con su autor y unimos en una sola tabla. Esa estructura tidy permite trabajar las dos obras con los mismos verbos.
+
+```{r}
+#| label: corpus-unir
+corpus <- bind_rows(
+  quijote   |> mutate(obra = "Quijote (Cervantes, 1605)"),
+  fortunata |> mutate(obra = "Fortunata (Galdós, 1887)")
+)
+
+palabras <- corpus |>
+  unnest_tokens(palabra, text)
+
+palabras |>
+  count(obra, name = "tokens")
+```
+
+## Frecuencias relativas tras remover *stopwords*
+
+```{r}
+#| label: frecuencias
+vacias_es <- tibble(palabra = stopwords("es", source = "stopwords-iso"))
+
+frecuencias <- palabras |>
+  anti_join(vacias_es, by = "palabra") |>
+  filter(nchar(palabra) > 2,
+         !grepl("[0-9]", palabra)) |>
+  count(obra, palabra, name = "n") |>
+  group_by(obra) |>
+  mutate(frec = n / sum(n)) |>
+  ungroup()
+
+frecuencias |>
+  group_by(obra) |>
+  slice_max(n, n = 10, with_ties = FALSE) |>
+  arrange(obra, desc(n))
+```
+
+## Palabras distintivas de cada obra (log-ratio simple)
+
+Para identificar qué palabras caracterizan a una obra frente a la otra, comparamos sus frecuencias relativas. La razón logarítmica (log₂) entre frecuencias es positiva cuando la palabra es más típica del Quijote y negativa cuando es más típica de Fortunata.
+
+```{r}
+#| label: distintivas
+distintivas <- frecuencias |>
+  select(obra, palabra, frec) |>
+  pivot_wider(names_from = obra, values_from = frec, values_fill = 0) |>
+  rename(frec_quijote   = `Quijote (Cervantes, 1605)`,
+         frec_fortunata = `Fortunata (Galdós, 1887)`) |>
+  mutate(
+    total = frec_quijote + frec_fortunata,
+    log_ratio = log2((frec_quijote + 1e-6) / (frec_fortunata + 1e-6))
+  ) |>
+  filter(total > 0.0005)   # palabras que aparecen con cierta frecuencia conjunta
+
+# Top 10 distintivas de cada lado
+top_quijote <- distintivas |> slice_max(log_ratio, n = 10)
+top_fortunata <- distintivas |> slice_min(log_ratio, n = 10)
+
+bind_rows(
+  top_quijote   |> mutate(lado = "Quijote"),
+  top_fortunata |> mutate(lado = "Fortunata")
+) |>
+  select(lado, palabra, frec_quijote, frec_fortunata, log_ratio)
+```
+
+## Visualizar las palabras distintivas
+
+```{r}
+#| label: fig-distintivas
+#| fig-cap: "Palabras más distintivas de cada novela (log-ratio de frecuencias relativas)"
+#| fig-width: 9
+#| fig-height: 7
+bind_rows(
+  top_quijote   |> mutate(lado = "Quijote (Cervantes, 1605)"),
+  top_fortunata |> mutate(lado = "Fortunata (Galdós, 1887)")
+) |>
+  ggplot(aes(x = log_ratio,
+             y = reorder(palabra, log_ratio),
+             fill = lado)) +
+  geom_col() +
+  scale_fill_manual(values = c("Quijote (Cervantes, 1605)" = "#e70033",
+                               "Fortunata (Galdós, 1887)"  = "#1f4e79")) +
+  labs(
+    title = "Vocabulario distintivo: Cervantes (1605) vs. Galdós (1887)",
+    subtitle = "log₂ de la razón de frecuencias relativas — positivo: más típico del Quijote",
+    x = "log₂(frec Quijote / frec Fortunata)",
+    y = NULL,
+    fill = NULL
+  ) +
+  theme_minimal()
+```
+
+Tres patrones que conviene comentar en sala:
+
+1. **Onomástica**: cada novela está dominada por sus propios protagonistas (`don`, `quijote`, `sancho` vs. `fortunata`, `juanito`, `maxi`).
+2. **Registro y mundo material**: el léxico del Quijote remite a la caballería andante (`merced`, `caballero`, `escudero`); el de Galdós, a la vida burguesa madrileña (`madrid`, `casa`, `calle`, `dinero`).
+3. **Verbos del decir**: ambas novelas usan mucho `dijo`, `respondió`, lo cual revela la centralidad del diálogo en la novela hispana — pero la frecuencia relativa difiere y aparece en la cola de la lista.
+
+## Más allá de este par
+
+Con `gutenbergr::gutenberg_works(languages = "es")` pueden listar más de 1.500 obras en español. Para repetir este ejercicio con otro par, basta con cambiar los IDs en la función `cargar_obra()`.
+
+```{r}
+#| label: gutenberg-mas
+#| eval: false
+obras_es <- gutenberg_works(languages = "es")
+obras_es |>
+  filter(grepl("Baroja|Pardo Bazán|Unamuno|Hostos", author, ignore.case = TRUE)) |>
+  select(gutenberg_id, title, author)
+```
+
+# Recursos y cierre
+
+## Lo que cubrimos hoy
+
+- **R y RStudio**: paneles, asignación, vectores, funciones básicas.
+- **Importación de datos**: `read_csv()` y carga desde paquetes (`carData::Chile`).
+- **Tidyverse — cinco verbos**: `filter`, `select`, `mutate`, `group_by`, `summarise`, con el operador `|>`.
+- **Visualización con ggplot2**: violines, dispersión con suavizado, barras apiladas y porcentuales.
+- **Modelo lineal**: `lm()` sobre el apoyo al status quo en Chile 1988, con tabla y gráfico de coeficientes.
+- **Análisis comparativo de texto**: tokenización, frecuencias relativas y log-ratio para identificar vocabulario distintivo entre dos novelas (Cervantes vs. Galdós).
+
+## Para seguir aprendiendo
+
+| Recurso                                                                    | Enlace                                                  |
+|----------------------------------------------------------------------------|---------------------------------------------------------|
+| **R for Data Science** (Wickham, Çetinkaya-Rundel & Grolemund, 2e)         | <https://r4ds.hadley.nz/>                               |
+| **Introducción a la ciencia de datos** (Irizarry, español, gratuito)       | <https://rafalab.dfci.harvard.edu/dslibro/>             |
+| **Text Mining with R** (Silge & Robinson)                                  | <https://www.tidytextmining.com/>                       |
+| **An R Companion to Applied Regression** (Fox & Weisberg, casa de `carData`) | <https://socialsciences.mcmaster.ca/jfox/Books/Companion/> |
+| **Hojas de referencia rápida** de Posit                                    | <https://posit.co/resources/cheatsheets/>               |
+| **Posit Cloud** (R en el navegador, sin instalar)                          | <https://posit.cloud/>                                  |
+| **StackOverflow — etiqueta R**                                             | <https://stackoverflow.com/questions/tagged/r>          |
+| **Proyecto Gutenberg en español**                                          | <https://www.gutenberg.org/browse/languages/es>         |
+
+## Próximas convocatorias del CACCS
+
+El CACCS ofrece talleres con regularidad. Mantengan contacto con `caccs.rp@upr.edu` (Ext. 87751) o visiten <http://sociales.uprrp.edu/caccs>.
+
+## Contacto
+
+Dudas, sugerencias o preguntas: [rashid.marcano \[arroba\] upr \[punto\] edu](mailto:rashid.marcano@upr.edu).
+
+¡Gracias por participar!

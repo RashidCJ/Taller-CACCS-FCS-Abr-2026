@@ -1,0 +1,62 @@
+/*-- scss:defaults --*/
+
+// Tema del Taller Introducción a R — CACCS, FCS-UPRRP (abril 2026)
+// Colores institucionales del Recinto de Río Piedras (rojo Gallitos).
+// Replica los defaults de Bootstrap 5 con la paleta UPRRP.
+// Fuentes locales — funciona offline.
+
+// Paleta UPRRP
+$rojo-uprrp:    #e70033;
+$rojo-claro:    #ff4d6a;
+$gris-uprrp:    #babcbe;
+$negro-uprrp:   #261c02;
+$blanco:        #ffffff;
+$gris-claro:    #f5f5f5;
+$gris-oscuro:   #333333;
+
+// Fuentes locales (sin dependencia de Google Fonts)
+$font-family-sans-serif: "Source Sans Pro", "Fira Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+$font-family-monospace: "Fira Code", SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+$headings-font-family: "Source Sans Pro", sans-serif;
+
+// Bootstrap variables semánticas
+$primary:   $rojo-uprrp;
+$secondary: $gris-uprrp;
+$success:   #38B44A;
+$info:      #17A2B8;
+$warning:   #EFB73E;
+$danger:    #DF382C;
+$light:     $gris-claro;
+$dark:      $negro-uprrp;
+
+$body-bg:    $blanco;
+$body-color: $negro-uprrp;
+$headings-font-weight: 700;
+$font-size-base: 1rem;
+$code-font-size: 0.875em;
+
+$link-color: $rojo-uprrp;
+$navbar-bg:  $rojo-uprrp;
+
+/*-- scss:rules --*/
+
+// Realces ligeros sobre el tema base
+h1, h2, h3 { color: $rojo-uprrp; }
+
+code {
+  color: $rojo-uprrp;
+  background-color: rgba(231, 0, 51, 0.08);
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+}
+
+pre {
+  border-left: 4px solid $rojo-uprrp;
+}
+
+table thead {
+  background-color: $rojo-uprrp;
+  color: $blanco;
+}
+
+a:hover { color: $rojo-claro; }

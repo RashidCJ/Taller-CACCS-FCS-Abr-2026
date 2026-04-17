@@ -1,0 +1,19 @@
+# macOS
+.DS_Store
+
+# RStudio / R
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj
+
+# Artefactos de render
+Rplots.pdf
+*_files/
+*_cache/
+.quarto/
+
+# Editores
+.vscode/
+.idea/
